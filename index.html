@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAT Swift Vocabulary Wordle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        wordle: {
+                            green: '#538d4e',
+                            yellow: '#b59f3b',
+                            darkgray: '#3a3a3c',
+                            lightgray: '#818384',
+                            absent: '#787c7e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        @keyframes flip {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+        .animate-flip {
+            animation: flip 0.6s ease forwards;
+        }
+        @keyframes bounce-custom {
+            0%, 20% { transform: translateY(0); }
+            40% { transform: translateY(-30px); }
+            50% { transform: translateY(5px); }
+            60% { transform: translateY(-15px); }
+            80% { transform: translateY(2px); }
+            100% { transform: translateY(0); }
+        }
+        .animate-bounce-custom {
+            animation: bounce-custom 0.5s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease;
+        }
+        /* Style for blurred/redacted secret word in hint examples */
+        .blurred-word {
+            filter: blur(4px);
+            user-select: none;
+            background-color: rgba(156, 163, 175, 0.3);
+            padding: 0 4px;
+            border-radius: 4px;
+            display: inline-block;
+            transition: filter 0.3s;
+        }
+        .blurred-word:hover {
+            filter: blur(0px);
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-[#121213] text-zinc-900 dark:text-zinc-100 min-h-screen flex flex-col justify-between select-none transition-colors duration-200">
+
+    <header class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 max-w-2xl mx-auto w-full">
+        <div class="flex items-center space-x-2">
+            <button id="settings-btn" class="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition" title="Vocabulary Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+            <button id="hint-btn" class="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition text-green-600 dark:text-green-400 font-bold text-xs px-2.5 py-1 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800" title="Get Vocabulary Hint">
+                💡 Hint
+            </button>
+        </div>
+        
+        <div class="text-center">
+            <h1 class="text-xl sm:text-2xl font-black tracking-wider uppercase">SAT Swift Wordle</h1>
+            <p id="word-length-indicator" class="text-[10px] text-zinc-500 uppercase font-semibold">Length: 5</p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="theme-toggle" class="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition" title="Toggle Theme">
+                <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full px-2 py-4 relative">
+        
+        <!-- Toast Notification Area -->
+        <div id="toast-container" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none"></div>
+
+        <!-- Hint Card Popup / Banner -->
+        <div id="hint-banner" class="w-full mb-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-xs hidden shadow-md transition-all">
+            <div class="flex items-center justify-between font-bold text-amber-800 dark:text-amber-400 mb-1">
+                <span>📚 Vocabulary Hint</span>
+                <button id="close-hint" class="hover:text-amber-900 text-lg leading-none">&times;</button>
+            </div>
+            <div id="hint-text" class="text-amber-900/90 dark:text-amber-300/90 leading-relaxed space-y-1"></div>
+        </div>
+
+        <!-- Game Board Grid -->
+        <div id="board-container" class="grid gap-1.5 p-2 mb-4 justify-center items-center">
+            <!-- Dynamically populated via JS -->
+        </div>
+
+        <!-- Virtual Keyboard -->
+        <div id="keyboard-container" class="w-full max-w-md flex flex-col space-y-1.5 px-1">
+            <div class="flex justify-center space-w-1.5 w-full">
+                <button data-key="Q" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">q</button>
+                <button data-key="W" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">w</button>
+                <button data-key="E" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">e</button>
+                <button data-key="R" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">r</button>
+                <button data-key="T" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">t</button>
+                <button data-key="Y" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">y</button>
+                <button data-key="U" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">u</button>
+                <button data-key="I" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">i</button>
+                <button data-key="O" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">o</button>
+                <button data-key="P" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">p</button>
+            </div>
+            <div class="flex justify-center space-w-1.5 w-full px-4">
+                <button data-key="A" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">a</button>
+                <button data-key="S" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">s</button>
+                <button data-key="D" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">d</button>
+                <button data-key="F" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">f</button>
+                <button data-key="G" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">g</button>
+                <button data-key="H" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">h</button>
+                <button data-key="J" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">j</button>
+                <button data-key="K" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">k</button>
+                <button data-key="L" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">l</button>
+            </div>
+            <div class="flex justify-center space-w-1.5 w-full">
+                <button data-key="ENTER" class="flex-[1.5] font-bold text-[10px] sm:text-xs py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">Enter</button>
+                <button data-key="Z" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">z</button>
+                <button data-key="X" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">x</button>
+                <button data-key="C" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">c</button>
+                <button data-key="V" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">v</button>
+                <button data-key="B" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">b</button>
+                <button data-key="N" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">n</button>
+                <button data-key="M" class="flex-1 font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5">m</button>
+                <button data-key="BACKSPACE" class="flex-[1.5] font-bold text-xs sm:text-sm py-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded uppercase transition flex items-center justify-center m-0.5" title="Backspace">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">SAT Word Bank Setup</h2>
+                <button id="close-settings" class="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Target Word Length (N)</label>
+                    <select id="word-length-select" class="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600">
+                        <option value="3">3 Letters</option>
+                        <option value="4">4 Letters</option>
+                        <option value="5" selected>5 Letters</option>
+                        <option value="6">6 Letters</option>
+                        <option value="7">7 Letters</option>
+                        <option value="8">8 Letters</option>
+                        <option value="9">9+ Letters</option>
+                    </select>
+                </div>
+
+                <div class="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl text-xs space-y-1">
+                    <div id="word-stats" class="font-semibold">Loaded SAT Vocabulary Words: 0</div>
+                    <div id="word-list-preview" class="text-zinc-500 truncate">Ready to play.</div>
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button id="reset-bank-btn" class="flex-1 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 font-semibold py-2.5 px-4 rounded-xl text-sm transition">Reset Full Vocab Bank</button>
+                    <button id="save-settings-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition shadow-lg shadow-green-600/20">Apply & Play</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over & Word Learning Review Modal (Shown on both win & loss) -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center text-center space-y-4">
+            <h2 id="game-over-title" class="text-2xl font-black">Brilliant! 🎉</h2>
+            
+            <p id="game-over-message" class="text-xs text-zinc-500 dark:text-zinc-400">
+                The target SAT vocabulary word was:
+            </p>
+            <div id="secret-word-display" class="font-black text-2xl uppercase tracking-widest text-green-600 dark:text-green-400 -mt-2"></div>
+
+            <div id="definition-box" class="bg-zinc-100 dark:bg-zinc-800/60 p-3.5 rounded-xl text-xs text-left w-full space-y-2 border border-zinc-200/50 dark:border-zinc-700/50">
+                <div>
+                    <span class="font-bold text-zinc-800 dark:text-zinc-200 block text-[11px] uppercase tracking-wider text-green-600 dark:text-green-400">Meaning</span>
+                    <span id="vocab-meaning" class="text-zinc-700 dark:text-zinc-300 font-medium"></span>
+                </div>
+                <div>
+                    <span class="font-bold text-zinc-800 dark:text-zinc-200 block text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Example</span>
+                    <span id="vocab-example" class="text-zinc-700 dark:text-zinc-300 italic"></span>
+                </div>
+                <div>
+                    <span class="font-bold text-zinc-800 dark:text-zinc-200 block text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">3 Common Synonyms</span>
+                    <div id="vocab-synonyms" class="flex flex-wrap gap-1 mt-1"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 w-full py-1">
+                <div class="bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-xl">
+                    <div id="stat-played" class="text-lg font-bold">0</div>
+                    <div class="text-[9px] text-zinc-500 uppercase tracking-wider">Played</div>
+                </div>
+                <div class="bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-xl">
+                    <div id="stat-win" class="text-lg font-bold">0%</div>
+                    <div class="text-[9px] text-zinc-500 uppercase tracking-wider">Win Rate</div>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 w-full pt-1">
+                <button id="play-again-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-green-600/20 flex items-center justify-center space-x-2">
+                    <span>Next SAT Word</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SAT Vocabulary Dataset (Word, Meaning, Example, Synonyms)
+        const SAT_VOCAB_RAW = [
+            { word: "COINCIDENCE", meaning: "two things happening together by chance", example: "Meeting her there was a pure coincidence.", synonyms: ["accident", "fluke", "chance"] },
+            { word: "CONTENTIOUS", meaning: "causing disagreement, sparks contests/arguments", example: "Immigration is a contentious political topic.", synonyms: ["disputable", "quarrelsome", "controversial"] },
+            { word: "CORDIALLY", meaning: "in a warm, friendly manner", example: "You are cordially invited to the wedding.", synonyms: ["warmly", "genially", "graciously"] },
+            { word: "DISCERNIBLE", meaning: "able to be perceived or recognized", example: "The change was barely discernible to the naked eye.", synonyms: ["noticeable", "perceptible", "apparent"] },
+            { word: "DISCONCERTING", meaning: "unsettling, confusing, throws off harmony", example: "It was disconcerting to see the empty building.", synonyms: ["disturbing", "unsettling", "disquieting"] },
+            { word: "HAPHAZARD", meaning: "left to chance and risk; lacking order", example: "The files were stored in a haphazard manner.", synonyms: ["random", "disorganized", "careless"] },
+            { word: "PRUDENTLY", meaning: "done with care and good judgment", example: "She prudently invested her savings.", synonyms: ["wisely", "cautiously", "sensibly"] },
+            { word: "REPRIEVE", meaning: "a temporary delay or relief from something bad", example: "The rain gave farmers a brief reprieve from the drought.", synonyms: ["respite", "postponement", "pardon"] },
+            { word: "SUBSTANTIAL", meaning: "large in size or amount; solid", example: "They made substantial progress on the project.", synonyms: ["considerable", "significant", "sizeable"] },
+            { word: "SUPERFICIAL", meaning: "only on the surface, not deep", example: "His analysis was superficial and lacked depth.", synonyms: ["shallow", "surface-level", "cursory"] },
+            { word: "ABRUPT", meaning: "sudden and unexpected", example: "His abrupt exit surprised everyone at the meeting.", synonyms: ["sudden", "hasty", "brusque"] },
+            { word: "ACKNOWLEDGED", meaning: "admitted or recognized as true", example: "He acknowledged his mistake in front of the class.", synonyms: ["admitted", "recognized", "accepted"] },
+            { word: "ADHERE", meaning: "stick to; follow strictly", example: "All employees must adhere to the safety guidelines.", synonyms: ["comply", "stick", "cleave"] },
+            { word: "ADMIRED", meaning: "respected greatly", example: "The teacher was admired by all her students.", synonyms: ["esteemed", "revered", "respected"] },
+            { word: "ADORN", meaning: "decorate or add beauty to", example: "The walls were adorned with colorful paintings.", synonyms: ["decorate", "embellish", "ornament"] },
+            { word: "ADVANTAGEOUS", meaning: "beneficial, full of advantage", example: "A good location is advantageous for any business.", synonyms: ["beneficial", "favorable", "profitable"] },
+            { word: "AFFINITY", meaning: "a natural liking or attraction for something", example: "He has a strong affinity for classical music.", synonyms: ["fondness", "rapport", "inclination"] },
+            { word: "AGGRAVATE", meaning: "make worse; irritate", example: "Scratching will only aggravate the rash.", synonyms: ["exasperate", "worsen", "intense"] },
+            { word: "AMBIGUITY", meaning: "unclear meaning, open to interpretation", example: "The contract's ambiguity led to a lawsuit.", synonyms: ["uncertainty", "obscurity", "vagueness"] },
+            { word: "AMBIGUOUS", meaning: "open to more than one meaning", example: "His ambiguous answer left us more confused.", synonyms: ["unclear", "equivocal", "vague"] },
+            { word: "AMBIVALENCE", meaning: "mixed feelings, feeling both ways", example: "Her ambivalence about the job offer kept her up at night.", synonyms: ["indecision", "doubt", "hesitation"] },
+            { word: "AMPLIFY", meaning: "to increase or make louder", example: "The microphone amplified her voice across the hall.", synonyms: ["magnify", "boost", "expand"] },
+            { word: "AMUSING", meaning: "funny, entertaining", example: "He told an amusing story about his trip.", synonyms: ["entertaining", "humorous", "witty"] },
+            { word: "ANALOGY", meaning: "a comparison between two things", example: "The teacher used an analogy to explain gravity.", synonyms: ["comparison", "parallel", "correlation"] },
+            { word: "ARBITRARY", meaning: "based on random choice, not reason", example: "The rule seemed arbitrary and unfair.", synonyms: ["capricious", "random", "unreasoned"] },
+            { word: "ARDUOUS", meaning: "very difficult, requiring great effort", example: "The hikers completed an arduous climb to the summit.", synonyms: ["strenuous", "taxing", "demanding"] },
+            { word: "EXHAUSTIVE", meaning: "thorough, covering everything", example: "The report is an exhaustive analysis of the market.", synonyms: ["comprehensive", "thorough", "complete"] },
+            { word: "IMPERCEPTIBLE", meaning: "too small to be noticed", example: "The change in temperature was imperceptible.", synonyms: ["indistinct", "subtle", "unnoticeable"] },
+            { word: "INADVERTENTLY", meaning: "unintentionally, by accident", example: "She inadvertently deleted the file.", synonyms: ["accidentally", "unintentionally", "unwittingly"] },
+            { word: "INCONCLUSIVE", meaning: "not leading to a definite result", example: "The test results were inconclusive.", synonyms: ["unsettled", "indefinite", "uncertain"] },
+            { word: "INEFFECTUAL", meaning: "not producing the desired effect", example: "His efforts to fix the issue were ineffectual.", synonyms: ["ineffective", "futile", "powerless"] },
+            { word: "ODDITY", meaning: "something strange or unusual", example: "The two-headed calf was a rare oddity.", synonyms: ["curiosity", "peculiarity", "anomaly"] },
+            { word: "OVERTLY", meaning: "openly, out in the open", example: "He overtly disagreed with the new policy.", synonyms: ["openly", "plainly", "publicly"] },
+            { word: "ANIMOSITY", meaning: "strong feelings of hostility", example: "Old animosities between the two families resurfaced.", synonyms: ["hostility", "hatred", "antagonism"] },
+            { word: "ANNOTATE", meaning: "add notes to explain", example: "Students annotated the poem to explain its meaning.", synonyms: ["glosser", "comment", "footnote"] },
+            { word: "ANOMALY", meaning: "something unusual or irregular", example: "The data point was an anomaly in an otherwise steady trend.", synonyms: ["abnormality", "exception", "deviation"] },
+            { word: "ANTAGONISTIC", meaning: "hostile, opposing", example: "His antagonistic tone made the debate tense.", synonyms: ["hostile", "inimical", "belligerent"] },
+            { word: "ANTECEDENT", meaning: "something that came before", example: "Poor planning was the antecedent to the project's failure.", synonyms: ["precursor", "forerunner", "ancestor"] },
+            { word: "ANTICIPATE", meaning: "expect beforehand", example: "We anticipate a busy weekend at the store.", synonyms: ["foresee", "expect", "await"] },
+            { word: "APPRAISING", meaning: "evaluating the value of", example: "The jeweler was appraising the diamond ring.", synonyms: ["evaluating", "assessing", "judging"] },
+            { word: "ARCANE", meaning: "mysterious, known by few", example: "The manual was full of arcane technical terms.", synonyms: ["esoteric", "obscure", "secret"] },
+            { word: "ATYPICAL", meaning: "not typical, unusual", example: "His atypical behavior worried his friends.", synonyms: ["unusual", "unconventional", "untackled"] },
+            { word: "AUTHORITATIVE", meaning: "commanding respect; official", example: "The professor gave an authoritative lecture on the subject.", synonyms: ["commanding", "definitive", "reliable"] },
+            { word: "BENEFICIARY", meaning: "one who receives benefits", example: "He was the sole beneficiary of his uncle's will.", synonyms: ["heir", "recipient", "payee"] },
+            { word: "BUTTRESS", meaning: "to support, reinforce", example: "New data buttressed the scientist's claim.", synonyms: ["bolster", "support", "strengthen"] },
+            { word: "CALIBRATE", meaning: "careful adjustments for accuracy", example: "The instrument needed calibrations before use.", synonyms: ["adjust", "fine-tune", "gauge"] },
+            { word: "CATALOG", meaning: "a systematic list of items", example: "The museum published a catalog of its exhibits.", synonyms: ["inventory", "list", "index"] },
+            { word: "CATASTROPHIC", meaning: "extremely harmful, disastrous", example: "The flood had catastrophic effects on the town.", synonyms: ["disastrous", "calamitous", "ruinous"] },
+            { word: "CIRCUMVENT", meaning: "to avoid or get around an obstacle", example: "They found a way to circumvent the regulation.", synonyms: ["bypass", "evade", "sidestep"] },
+            { word: "COMMERCE", meaning: "activity of buying and selling", example: "The commercialization of the invention made it widely available.", synonyms: ["trade", "business", "traffic"] },
+            { word: "COMMONPLACE", meaning: "ordinary, usual", example: "Smartphones have become commonplace in daily life.", synonyms: ["routine", "ordinary", "widespread"] },
+            { word: "COMPELLING", meaning: "very convincing", example: "She made a compelling argument for the new policy.", synonyms: ["persuasive", "captivating", "forceful"] },
+            { word: "COMPLEMENT", meaning: "completing each other well", example: "The two flavors are complementary.", synonyms: ["enhance", "complete", "round-out"] },
+            { word: "COMPLIANCE", meaning: "obeying rules", example: "The factory is now in compliance with safety codes.", synonyms: ["obedience", "conformity", "acquiescence"] },
+            { word: "CONCEAL", meaning: "to hide", example: "She tried to conceal her disappointment.", synonyms: ["hide", "mask", "shroud"] },
+            { word: "CONCEDE", meaning: "to admit, often reluctantly", example: "He conceded that his plan had flaws.", synonyms: ["grant", "admit", "acknowledge"] },
+            { word: "CONFINED", meaning: "limited or restricted", example: "The patient was confined to bed rest.", synonyms: ["restricted", "cramped", "bounded"] },
+            { word: "CONFLATE", meaning: "combined into one mistakenly", example: "The two issues were conflated in the debate.", synonyms: ["merge", "fuse", "blend"] },
+            { word: "CONFORM", meaning: "to follow rules or norms", example: "Students must conform to the dress code.", synonyms: ["comply", "adapt", "follow"] },
+            { word: "CONTINGENT", meaning: "dependent on a condition", example: "Funding is contingent on approval from the board.", synonyms: ["dependent", "conditional", "subject-to"] },
+            { word: "CONTRIVED", meaning: "artificially planned, not natural", example: "The plot twist felt contrived and unrealistic.", synonyms: ["forced", "artificial", "strained"] },
+            { word: "CORROBORATE", meaning: "to confirm with evidence", example: "Witnesses corroborated her account of the accident.", synonyms: ["confirm", "verify", "substantiate"] },
+            { word: "COUNTERACT", meaning: "to act against, neutralize", example: "Exercise can counteract the effects of stress.", synonyms: ["neutralize", "offset", "counterbalance"] },
+            { word: "CURTAIL", meaning: "cut short, reduced", example: "The event was curtailed due to bad weather.", synonyms: ["shorten", "reduce", "trim"] },
+            { word: "DECEPTIVE", meaning: "misleading, tricking", example: "The ad's claims were deceptive.", synonyms: ["misleading", "illusory", "fraudulent"] },
+            { word: "DECOUPLE", meaning: "separated, disconnected", example: "The company's profits decoupled from its revenue growth.", synonyms: ["detach", "separate", "disconnect"] },
+            { word: "DEFY", meaning: "openly resisted", example: "She defied her parents' wishes and moved abroad.", synonyms: ["resist", "disobey", "challenge"] },
+            { word: "DEFUNCT", meaning: "no longer functioning or existing", example: "The defunct factory has been empty for years.", synonyms: ["obsolete", "extinct", "disused"] },
+            { word: "DELEGATE", meaning: "to assign responsibility", example: "The manager delegated tasks to her team.", synonyms: ["assign", "entrust", "deputize"] },
+            { word: "DEMARCATE", meaning: "marked off with clear boundaries", example: "The property lines were clearly demarcated with fences.", synonyms: ["delimit", "define", "mark"] },
+            { word: "DENIGRATE", meaning: "to criticize unfairly, belittle", example: "He denigrated his rival's achievements.", synonyms: ["disparage", "belittle", "defame"] },
+            { word: "DESPISE", meaning: "to hate strongly", example: "She despises dishonesty above all else.", synonyms: ["detest", "loathe", "scorn"] },
+            { word: "DESULTORY", meaning: "lacking a plan; disconnected", example: "Their desultory conversation drifted from topic to topic.", synonyms: ["aimless", "haphazard", "unfocused"] },
+            { word: "DEVIATE", meaning: "moves away from the norm", example: "The results deviate from expected outcomes.", synonyms: ["stray", "diverge", "swerve"] },
+            { word: "DISASTROUS", meaning: "causing great damage", example: "The picnic was disastrous due to the storm.", synonyms: ["catastrophic", "calamitous", "ruinous"] },
+            { word: "DISCERN", meaning: "to perceive or recognize clearly", example: "It's hard to discern truth from rumor.", synonyms: ["perceive", "detect", "differentiate"] },
+            { word: "DISPARATE", meaning: "fundamentally different", example: "The team combined disparate skills to solve the problem.", synonyms: ["distinct", "contrasting", "divergent"] },
+            { word: "DISSEMINATE", meaning: "to spread widely", example: "The findings were disseminated through scientific journals.", synonyms: ["broadcast", "distribute", "circulate"] },
+            { word: "DISTINCT", meaning: "clearly different or separate", example: "The two flavors are quite distinct.", synonyms: ["separate", "discrete", "unmistakable"] },
+            { word: "DIVERGE", meaning: "to split off in different directions", example: "Their opinions diverge on the best solution.", synonyms: ["separate", "deviate", "fork"] },
+            { word: "DIVERSE", meaning: "showing variety, different kinds", example: "The city has a diverse population.", synonyms: ["varied", "assorted", "heterogeneous"] },
+            { word: "DOGMATIC", meaning: "asserting opinions as certainly true", example: "He was dogmatic about his political beliefs.", synonyms: ["opinionated", "assertive", "inflexible"] },
+            { word: "DORMANT", meaning: "inactive but capable of activity", example: "The volcano has been dormant for centuries.", synonyms: ["inactive", "asleep", "latent"] },
+            { word: "DYNAMIC", meaning: "constantly changing, energetic", example: "The city has a dynamic and growing economy.", synonyms: ["vibrant", "energetic", "changing"] },
+            { word: "EARNEST", meaning: "sincere and serious", example: "He made an earnest effort to fix his mistake.", synonyms: ["sincere", "solemn", "heartfelt"] },
+            { word: "ECLIPSE", meaning: "overshadows, surpasses", example: "Her talent eclipses that of her rivals.", synonyms: ["overshadow", "surpass", "outshine"] },
+            { word: "EFFICIENT", meaning: "achieving results with minimal waste", example: "The new engine is far more efficient.", synonyms: ["productive", "effective", "streamlined"] },
+            { word: "ELUSIVE", meaning: "hard to find, catch, or define", example: "Success remained elusive despite his efforts.", synonyms: ["evasive", "slippery", "fleeting"] },
+            { word: "EMBRACE", meaning: "accepted eagerly", example: "The community embraced the new policy.", synonyms: ["welcome", "adopt", "accept"] },
+            { word: "EMPIRICAL", meaning: "based on observation or experiment", example: "The theory is supported by empirical evidence.", synonyms: ["observed", "factual", "experimental"] },
+            { word: "ENCOMPASS", meaning: "to include comprehensively", example: "The course encompasses both theory and practice.", synonyms: ["include", "cover", "comprise"] },
+            { word: "ENDORSE", meaning: "to publicly support", example: "The senator endorsed the new bill.", synonyms: ["support", "back", "sanction"] },
+            { word: "ENGENDER", meaning: "causing or giving rise to", example: "The policy is engendering resentment among workers.", synonyms: ["produce", "generate", "foster"] },
+            { word: "ENGULF", meaning: "completely surrounds or overwhelms", example: "Fire quickly engulfs the dry forest.", synonyms: ["swallow", "envelop", "inundate"] },
+            { word: "ENTRENCH", meaning: "firmly establishing, hard to change", example: "The policy is entrenching inequality further.", synonyms: ["establish", "embed", "root"] },
+            { word: "EPITOMIZE", meaning: "to be a perfect example", example: "Her work epitomizes modern design.", synonyms: ["typify", "represent", "personify"] },
+            { word: "ESTEEM", meaning: "respect and admiration", example: "He is held in high esteem by his colleagues.", synonyms: ["respect", "admiration", "regard"] },
+            { word: "EXACTITUDE", meaning: "precision, exactness", example: "Scientists work with great exactitude.", synonyms: ["precision", "accuracy", "correctness"] },
+            { word: "EXAGGERATE", meaning: "to overstate", example: "He tends to exaggerate his achievements.", synonyms: ["overstate", "embellish", "inflate"] },
+            { word: "EXEMPLIFY", meaning: "shows as a typical example", example: "This case exemplifies the problem perfectly.", synonyms: ["illustrate", "demonstrate", "represent"] },
+            { word: "EXPLICABLE", meaning: "able to be explained", example: "The strange noise was easily explicable.", synonyms: ["understandable", "comprehensible", "explainable"] },
+            { word: "EXPLOIT", meaning: "to use unfairly for one's benefit", example: "The company was accused of exploiting its workers.", synonyms: ["utilize", "manipulate", "abuse"] },
+            { word: "EXTENSIVE", meaning: "large in amount or scope", example: "The library has an extensive collection.", synonyms: ["vast", "broad", "sweeping"] },
+            { word: "EXTOL", meaning: "to praise highly", example: "Critics extolled the film's originality.", synonyms: ["praise", "laud", "acclaim"] },
+            { word: "EXTRANEOUS", meaning: "irrelevant, not essential", example: "Remove extraneous details from your essay.", synonyms: ["irrelevant", "unrelated", "superfluous"] },
+            { word: "FABRICATE", meaning: "makes up false information", example: "He fabricates excuses whenever he's late.", synonyms: ["concoct", "invent", "forge"] },
+            { word: "FACILE", meaning: "too easy, shallow", example: "Her facile explanation ignored the real complexity.", synonyms: ["simplistic", "shallow", "glib"] },
+            { word: "FEASIBLE", meaning: "possible to do, practical", example: "Is it feasible to finish the project by Friday?", synonyms: ["workable", "practicable", "viable"] },
+            { word: "FORETELL", meaning: "predicts", example: "The old saying foretells a harsh winter.", synonyms: ["predict", "prophesy", "forecast"] },
+            { word: "FORFEITURE", meaning: "loss of something as a penalty", example: "Missing the deadline resulted in forfeiture of the prize.", synonyms: ["surrender", "loss", "relinquishment"] },
+            { word: "FOSTER", meaning: "to encourage development", example: "The teacher fosters creativity in her classroom.", synonyms: ["nurture", "encourage", "promote"] },
+            { word: "FOUNDATIONAL", meaning: "forming a basis, essential", example: "Math is foundational to engineering.", synonyms: ["fundamental", "basic", "core"] },
+            { word: "FRAGILE", meaning: "easily broken, delicate", example: "Handle the glass vase carefully; it's fragile.", synonyms: ["delicate", "brittle", "vulnerable"] },
+            { word: "FRUITLESS", meaning: "producing no results", example: "Their search for the missing keys was fruitless.", synonyms: ["futility", "unproductive", "vain"] },
+            { word: "GENUINE", meaning: "real, authentic", example: "She showed genuine concern for her friend.", synonyms: ["authentic", "sincere", "truthful"] },
+            { word: "GRAPPLE", meaning: "to struggle or deal with an issue", example: "The team grappled with a tough technical problem.", synonyms: ["wrestle", "confront", "tackle"] },
+            { word: "HINDER", meaning: "to obstruct or delay", example: "Bad weather hindered the rescue effort.", synonyms: ["impede", "thwart", "obstruct"] },
+            { word: "HOARD", meaning: "to store away in secret", example: "He hoarded canned food in his basement.", synonyms: ["stash", "stockpile", "accumulate"] },
+            { word: "HYPOTHESIS", meaning: "proposed explanation to be tested", example: "The scientist tested her hypothesis with an experiment.", synonyms: ["theory", "premise", "postulate"] },
+            { word: "IMMINENT", meaning: "about to happen very soon", example: "Storm clouds signaled imminent rain.", synonyms: ["impending", "approaching", "looming"] },
+            { word: "IMMUNE", meaning: "protected against, unaffected by", example: "No one is immune to criticism.", synonyms: ["exempt", "resistant", "invulnerable"] },
+            { word: "IMPARTIAL", meaning: "not biased, fair", example: "The referee remained impartial throughout the match.", synonyms: ["unbiased", "neutral", "objective"] },
+            { word: "IMPEDE", meaning: "to slow down or block", example: "Heavy traffic impeded our progress.", synonyms: ["hinder", "block", "delay"] },
+            { word: "IMPLICIT", meaning: "implied though not directly stated", example: "There was an implicit agreement between them.", synonyms: ["tacit", "unspoken", "understood"] },
+            { word: "IMPRACTICAL", meaning: "not sensible or realistic", example: "The design looked nice but was impractical.", synonyms: ["unrealistic", "unfeasible", "unworkable"] },
+            { word: "IMPROVISE", meaning: "to create spontaneously on the spot", example: "The actor improvised his lines when he forgot them.", synonyms: ["ad-lib", "extemporize", "spontaneity"] },
+            { word: "INCENSED", meaning: "very angry", example: "He was incensed by the unfair decision.", synonyms: ["enraged", "infuriated", "furious"] },
+            { word: "INCENTIVE", meaning: "thing that motivates action", example: "The company offers incentives for high performance.", synonyms: ["motive", "inducement", "stimulus"] },
+            { word: "INDISPUTABLE", meaning: "beyond doubt, certain", example: "The evidence was indisputable.", synonyms: ["undeniable", "irrefutable", "certain"] },
+            { word: "INDULGE", meaning: "to allow oneself a pleasure", example: "She indulged in a slice of chocolate cake.", synonyms: ["pamper", "gratify", "spoil"] },
+            { word: "INEVITABLE", meaning: "certain to happen", example: "Change is inevitable in any growing business.", synonyms: ["unavoidable", "certain", "fated"] },
+            { word: "INFALLIBLE", meaning: "incapable of error", example: "No system is truly infallible.", synonyms: ["flawless", "unerring", "perfect"] },
+            { word: "INNOCUOUS", meaning: "harmless", example: "It seemed like an innocuous comment at first.", synonyms: ["harmless", "inoffensive", "safe"] },
+            { word: "INSTITUTE", meaning: "establishing, setting up", example: "The school is instituting a new dress code.", synonyms: ["establish", "introduce", "enact"] },
+            { word: "INTANGIBLE", meaning: "not able to be touched, abstract", example: "Trust is an intangible but vital asset.", synonyms: ["abstract", "ethereal", "incorporeal"] },
+            { word: "INTRICATE", meaning: "very detailed and complex", example: "The watch has an intricate mechanism inside.", synonyms: ["complex", "elaborate", "detailed"] },
+            { word: "INTRIGUING", meaning: "fascinating, arousing curiosity", example: "She found the mystery novel intriguing.", synonyms: ["fascinating", "engaging", "captivating"] },
+            { word: "INVALIDATE", meaning: "to make invalid or void", example: "New evidence invalidated the old theory.", synonyms: ["nullify", "void", "disprove"] },
+            { word: "INVENTIVE", meaning: "creative, good at inventing", example: "Her inventive solution saved the company money.", synonyms: ["creative", "imaginative", "resourceful"] },
+            { word: "ISOLATE", meaning: "to set apart, separate", example: "Scientists isolated the virus for study.", synonyms: ["segregate", "detach", "seclude"] },
+            { word: "JARRING", meaning: "causing a harsh, unpleasant shock", example: "The loud noise was jarring in the quiet library.", synonyms: ["clashing", "discordant", "jolting"] },
+            { word: "LATENT", meaning: "hidden, not yet developed or active", example: "She has a latent talent for painting.", synonyms: ["dormant", "hidden", "underlying"] },
+            { word: "LEGITIMATE", meaning: "valid, lawful, genuine", example: "She has a legitimate claim to the inheritance.", synonyms: ["valid", "lawful", "authentic"] },
+            { word: "LOCALIZED", meaning: "restricted to a particular place", example: "The infection remained localized to one area.", synonyms: ["confined", "restricted", "contained"] },
+            { word: "LUCRATIVE", meaning: "profitable", example: "He landed a lucrative business deal.", synonyms: ["profitable", "rewarding", "gainful"] },
+            { word: "MANIFEST", meaning: "clearly apparent or to show clearly", example: "Her anxiety manifested as constant fidgeting.", synonyms: ["display", "exhibit", "evince"] },
+            { word: "MARGINALIZE", meaning: "to push to the edge of society, ignore", example: "The policy marginalized low-income families.", synonyms: ["sidelined", "disparage", "exclude"] },
+            { word: "MEDIATE", meaning: "resolved through a neutral third party", example: "The dispute was mediated by a neutral third party.", synonyms: ["arbitrate", "reconcile", "intercede"] },
+            { word: "MELODIC", meaning: "pleasant sounding", example: "The song has a melodic, catchy chorus.", synonyms: ["tuneful", "harmonious", "melodious"] },
+            { word: "MIMIC", meaning: "to imitate closely", example: "The parrot could mimic human speech.", synonyms: ["imitate", "ape", "impersonate"] },
+            { word: "MISANTHROPIC", meaning: "disliking humankind", example: "The misanthropic hermit avoided all visitors.", synonyms: ["cynical", "antisocial", "distrustful"] },
+            { word: "MISCONSTRUE", meaning: "to interpret wrongly", example: "Please don't misconstrue my silence as agreement.", synonyms: ["misinterpret", "misunderstand", "misjudge"] },
+            { word: "MODERATE", meaning: "average, not extreme", example: "She took a moderate approach to the negotiations.", synonyms: ["temperate", "reasonable", "mild"] },
+            { word: "MONETIZE", meaning: "turning into a source of profit", example: "The app is monetizing through ads.", synonyms: ["cash-in", "commercialize", "capitalize"] },
+            { word: "MYSTIFYING", meaning: "confusing, puzzling", example: "The disappearing socks are a mystifying phenomenon.", synonyms: ["perplexing", "puzzling", "baffling"] },
+            { word: "NEGATE", meaning: "canceling out, making ineffective", example: "The error negated all his hard work.", synonyms: ["nullify", "cancel", "undo"] },
+            { word: "NEGLIGIBLE", meaning: "so small it can be ignored", example: "The price difference is negligible.", synonyms: ["insignificant", "minor", "trivial"] },
+            { word: "NEUTRALITY", meaning: "the state of not taking sides", example: "Switzerland is known for its political neutrality.", synonyms: ["impartiality", "detachment", "fairness"] },
+            { word: "NEWFOUND", meaning: "recently discovered or acquired", example: "She approached her job with newfound confidence.", synonyms: ["recent", "discovered", "fresh"] },
+            { word: "NOTIONAL", meaning: "existing only as an idea, theoretical", example: "The budget figures were purely notional at this stage.", synonyms: ["theoretical", "imaginary", "speculative"] },
+            { word: "NOVEL", meaning: "new and original", example: "The scientist proposed a novel solution to the problem.", synonyms: ["original", "innovative", "fresh"] },
+            { word: "NUANCED", meaning: "characterized by subtle distinctions", example: "She gave a nuanced analysis of the conflict.", synonyms: ["subtle", "refined", "delicate"] },
+            { word: "NULLIFY", meaning: "to make legally void or ineffective", example: "The court nullified the unfair contract.", synonyms: ["invalidate", "void", "annul"] },
+            { word: "OBLIGATED", meaning: "required by duty or law", example: "He felt obligated to help his neighbor.", synonyms: ["duty-bound", "compelled", "required"] },
+            { word: "OBSCURE", meaning: "not well known; unclear", example: "The reference was too obscure for most readers.", synonyms: ["unclear", "vague", "little-known"] },
+            { word: "OBSERVANT", meaning: "quick to notice things", example: "The observant detective spotted the clue.", synonyms: ["perceptive", "alert", "vigilant"] },
+            { word: "OBSTRUCTED", meaning: "blocked", example: "A fallen tree obstructed the road.", synonyms: ["blocked", "clogged", "hindered"] },
+            { word: "OBVIATE", meaning: "made unnecessary, removed need for", example: "The new policy obviated the need for extra paperwork.", synonyms: ["preclude", "prevent", "remove"] },
+            { word: "OFFHAND", meaning: "said without careful thought, casual", example: "He made an offhand remark that hurt her feelings.", synonyms: ["casual", "extemporaneous", "unceremonious"] },
+            { word: "OPAQUE", meaning: "not transparent, unclear", example: "The company's finances remained opaque to investors.", synonyms: ["unclear", "cloudy", "impenetrable"] },
+            { word: "OPERATIVE", meaning: "functioning, in effect", example: "The new rule became operative last month.", synonyms: ["active", "effective", "functional"] },
+            { word: "OPTIMIZE", meaning: "to make as effective as possible", example: "Engineers optimized the engine for fuel efficiency.", synonyms: ["maximize", "improve", "enhance"] },
+            { word: "ORNAMENTAL", meaning: "decorative, not functional", example: "The garden has ornamental shrubs along the path.", synonyms: ["decorative", "showy", "embellished"] },
+            { word: "OUTSTRIP", meaning: "to exceed or surpass", example: "Demand quickly outstripped supply.", synonyms: ["surpass", "exceed", "outdo"] },
+            { word: "OVERLOOK", meaning: "to fail to notice", example: "Don't overlook the small print in the contract.", synonyms: ["miss", "ignore", "disregard"] },
+            { word: "OVERSHADOW", meaning: "made less noticeable by comparison", example: "Her achievement was overshadowed by the scandal.", synonyms: ["eclipse", "obscure", "dwarf"] },
+            { word: "OVERWHELM", meaning: "overcome by too much of something", example: "She felt overwhelmed by the amount of homework.", synonyms: ["overpower", "swamp", "inundate"] },
+            { word: "PAUCITY", meaning: "a small or insufficient amount, scarce", example: "There's a paucity of evidence to support the claim.", synonyms: ["scarcity", "dearth", "shortage"] },
+            { word: "PERCEIVE", meaning: "to become aware through senses", example: "She perceived a change in his tone.", synonyms: ["discern", "observe", "notice"] },
+            { word: "PERIPHERAL", meaning: "relating to the outer edge, minor", example: "The detail was peripheral to the main argument.", synonyms: ["secondary", "outer", "marginal"] },
+            { word: "PERPETUAL", meaning: "never ending, continuous", example: "The city has a perpetual traffic problem.", synonyms: ["endless", "unceasing", "continuous"] },
+            { word: "PERSISTENT", meaning: "continuing firmly despite difficulty", example: "Her persistent effort finally paid off.", synonyms: ["tenacious", "relentless", "enduring"] },
+            { word: "POPULARIZE", meaning: "to make widely known or liked", example: "The show helped popularize the new dance style.", synonyms: ["promote", "spread", "disseminate"] },
+            { word: "POSSESSIONS", meaning: "things owned", example: "She packed her few possessions and left.", synonyms: ["belongings", "property", "goods"] },
+            { word: "PRAGMATIC", meaning: "dealing with things sensibly and practically", example: "She took a pragmatic approach to solving the crisis.", synonyms: ["practical", "sensible", "realistic"] },
+            { word: "PRECARIOUS", meaning: "unstable or dangerous balance", example: "The precariousness of his job worried him constantly.", synonyms: ["risky", "unstable", "insecure"] },
+            { word: "PRECURSOR", meaning: "something that comes before", example: "Early mammals were precursors of today's species.", synonyms: ["forerunner", "predecessor", "antecedent"] },
+            { word: "PREDATORY", meaning: "seeking to exploit others", example: "The company used predatory lending practices.", synonyms: ["exploitative", "rapacious", "greedy"] },
+            { word: "PREDETERMINED", meaning: "decided in advance", example: "The outcome felt predetermined from the start.", synonyms: ["prearranged", "destined", "set"] },
+            { word: "PREDICTIVE", meaning: "able to forecast future events", example: "The model has strong predictive power.", synonyms: ["prophetic", "forecasting", "predicting"] },
+            { word: "PREMEDITATED", meaning: "planned in advance", example: "The crime was clearly premeditated.", synonyms: ["calculated", "intentional", "planned"] },
+            { word: "PRESCRIBED", meaning: "recommended or specified as required", example: "The doctor prescribed a course of antibiotics.", synonyms: ["ordered", "stipulated", "mandated"] },
+            { word: "PRESERVE", meaning: "to keep safe from harm or decay", example: "They worked to preserve the ancient artifacts.", synonyms: ["protect", "maintain", "safeguard"] },
+            { word: "PRESUME", meaning: "to assume something is true without proof", example: "I presume you've already read the report.", synonyms: ["assume", "suppose", "surmise"] },
+            { word: "PREVAIL", meaning: "to win out, be dominant", example: "Justice eventually prevailed in the case.", synonyms: ["triumph", "succeed", "overcome"] },
+            { word: "PROCLAIM", meaning: "announces publicly and firmly", example: "The sign proclaims the store's grand opening.", synonyms: ["announce", "declare", "broadcast"] },
+            { word: "PROFICIENT", meaning: "competent, skilled", example: "She is proficient in three languages.", synonyms: ["skilled", "adept", "competent"] },
+            { word: "PROFOUND", meaning: "very deep or intense; insightful", example: "The book had a profound impact on her thinking.", synonyms: ["deep", "insightful", "intense"] },
+            { word: "PROFUSION", meaning: "a large or excessive amount", example: "The garden had a profusion of colorful flowers.", synonyms: ["abundance", "plenty", "copiousness"] },
+            { word: "PROLONG", meaning: "to extend the duration of", example: "The delay prolonged the meeting by an hour.", synonyms: ["extend", "lengthen", "protract"] },
+            { word: "PROPONENT", meaning: "a person who supports an idea", example: "She is a proponent of renewable energy.", synonyms: ["advocate", "supporter", "champion"] },
+            { word: "PROTRACTED", meaning: "lasting longer than expected", example: "The negotiations were protracted and exhausting.", synonyms: ["prolonged", "extended", "drawn-out"] },
+            { word: "PROVOKE", meaning: "stirs up a reaction", example: "The comment provokes strong reactions online.", synonyms: ["incite", "instigate", "arouse"] },
+            { word: "QUARREL", meaning: "an argument or disagreement", example: "The siblings had a quarrel over the last slice of pizza.", synonyms: ["argument", "dispute", "squabble"] },
+            { word: "REBELLION", meaning: "open resistance to authority", example: "The rebellion was crushed within weeks.", synonyms: ["revolt", "uprising", "insurrection"] },
+            { word: "RECALCITRANT", meaning: "stubbornly resistant to authority", example: "The recalcitrant student refused to follow the rules.", synonyms: ["defiant", "unruly", "obstinate"] },
+            { word: "RECANT", meaning: "withdraws a previously held statement", example: "The witness later recants her testimony.", synonyms: ["retract", "disavow", "withdraw"] },
+            { word: "RECEPTIVE", meaning: "willing to consider new ideas", example: "The manager was receptive to new suggestions.", synonyms: ["open-minded", "amenable", "welcoming"] },
+            { word: "RECOMMEND", meaning: "to suggest as good or suitable", example: "The doctor recommended more exercise.", synonyms: ["suggest", "advise", "endorse"] },
+            { word: "RECTIFY", meaning: "to correct or set right", example: "The company rectified the billing error quickly.", synonyms: ["correct", "amend", "remedy"] },
+            { word: "REDUCE", meaning: "made smaller or less", example: "The price was reduced by twenty percent.", synonyms: ["diminish", "lessen", "decrease"] },
+            { word: "REDUNDANT", meaning: "unnecessarily repetitive", example: "The report contained several redundant sentences.", synonyms: ["superfluous", "repetitive", "unnecessary"] },
+            { word: "REFUTE", meaning: "to prove wrong", example: "New evidence refuted the old theory.", synonyms: ["disprove", "rebut", "debunk"] },
+            { word: "REGULATE", meaning: "to control by rules", example: "The agency regulates food safety standards.", synonyms: ["control", "govern", "monitor"] },
+            { word: "REINFORCE", meaning: "strengthening support", example: "The steel bars are reinforcing the concrete wall.", synonyms: ["strengthen", "bolster", "fortify"] },
+            { word: "RENOUNCE", meaning: "to formally give up or reject", example: "He renounced his claim to the throne.", synonyms: ["relinquish", "relinquish", "disown"] },
+            { word: "REPLENISH", meaning: "refills, restores supply", example: "The rain replenishes the region's water supply.", synonyms: ["refill", "restore", "restock"] },
+            { word: "REPLICABLE", meaning: "able to be repeated with same result", example: "A good experiment must be replicable by others.", synonyms: ["repeatable", "reproducible", "duplicable"] },
+            { word: "REPUDIATE", meaning: "rejects or disowns firmly", example: "She repudiates any connection to the scandal.", synonyms: ["reject", "disown", "renounce"] },
+            { word: "REPUTATION", meaning: "general opinion others have of someone", example: "The restaurant has a reputation for great service.", synonyms: ["stature", "standing", "prestige"] },
+            { word: "RESILIENCE", meaning: "ability to recover quickly from difficulty", example: "Her resilience helped her overcome many setbacks.", synonyms: ["toughness", "adaptability", "fortitude"] },
+            { word: "RETAIN", meaning: "to keep possession of", example: "The company retained its top employees with bonuses.", synonyms: ["keep", "hold", "preserve"] },
+            { word: "RETALIATE", meaning: "takes revenge in response to an act", example: "The country retaliates against the trade tariffs.", synonyms: ["reciprocate", "strike-back", "counter"] },
+            { word: "RIVAL", meaning: "a competing opponent", example: "The two companies are fierce rivals.", synonyms: ["competitor", "adversary", "opponent"] },
+            { word: "ROUSING", meaning: "stirring up excitement or enthusiasm", example: "The coach gave a rousing speech before the game.", synonyms: ["stirring", "inspiring", "invigorating"] },
+            { word: "RUDIMENTARY", meaning: "basic, elementary, not fully developed", example: "He has only a rudimentary understanding of coding.", synonyms: ["basic", "elementary", "fundamental"] },
+            { word: "SANGUINE", meaning: "optimistic, cheerful", example: "She remained sanguine about the company's future.", synonyms: ["optimistic", "cheerful", "confident"] },
+            { word: "SATURATED", meaning: "completely filled or soaked", example: "The market is saturated with similar products.", synonyms: ["soaked", "steeped", "imbued"] },
+            { word: "SCHOLARLY", meaning: "relating to serious academic study", example: "The scholarly article was published in a peer-reviewed journal.", synonyms: ["academic", "learned", "erudite"] },
+            { word: "SCRUTINIZE", meaning: "examine closely and critically", example: "Every detail was scrutinized before approval.", synonyms: ["inspect", "examine", "analyze"] },
+            { word: "SENSITIVE", meaning: "perceptive to feelings, easily affected", example: "He's sensitive to criticism of his work.", synonyms: ["perceptive", "delicate", "responsive"] },
+            { word: "SIMULATE", meaning: "to imitate the conditions of something", example: "The training program simulates real flight conditions.", synonyms: ["replicate", "imitate", "model"] },
+            { word: "SINCERITY", meaning: "honesty of feeling, genuineness", example: "Her apology was full of sincerity.", synonyms: ["candor", "honesty", "genuineness"] },
+            { word: "SKEPTICAL", meaning: "doubtful about claims", example: "He remained skeptical of the miracle cure.", synonyms: ["doubtful", "dubious", "suspicious"] },
+            { word: "SPANS", meaning: "covers or extends across", example: "His career spans over four decades.", synonyms: ["extends", "covers", "bridges"] },
+            { word: "SPECULATE", meaning: "to form a theory without firm evidence", example: "Analysts speculate that prices will rise next year.", synonyms: ["hypothesize", "conjecture", "guess"] },
+            { word: "SPURIOUS", meaning: "false, not genuine", example: "The lawsuit was based on spurious claims.", synonyms: ["bogus", "fake", "specious"] },
+            { word: "STARTLE", meaning: "to surprise suddenly", example: "The loud bang startled the entire office.", synonyms: ["frighten", "surprise", "astound"] },
+            { word: "STIMULATE", meaning: "encouraged or excited into activity", example: "The tax cut stimulated economic growth.", synonyms: ["energize", "prompt", "galvanize"] },
+            { word: "STRENUOUS", meaning: "with great effort or energy", example: "She strenuously objected to the new rule.", synonyms: ["arduous", "demanding", "vigorous"] },
+            { word: "STURDY", meaning: "in a strong, solidly built way", example: "The bridge was sturdily constructed to last centuries.", synonyms: ["robust", "durable", "solid"] },
+            { word: "STYMIE", meaning: "to block or thwart progress", example: "Budget cuts stymied the research project.", synonyms: ["thwart", "hinder", "impede"] },
+            { word: "SUBSTANTIATE", meaning: "to provide evidence for", example: "She couldn't substantiate her claims with data.", synonyms: ["verify", "corroborate", "validate"] },
+            { word: "SUBTLE", meaning: "delicate, not obvious", example: "There was a subtle change in her tone.", synonyms: ["delicate", "understated", "nuanced"] },
+            { word: "SUBVERSIVE", meaning: "seeking to undermine established system", example: "The film had a subversive message about authority.", synonyms: ["insurgent", "disruptive", "rebellious"] },
+            { word: "SUCCUMB", meaning: "to give in to something overwhelming", example: "He finally succumbed to the pressure.", synonyms: ["yield", "surrender", "capitulate"] },
+            { word: "SUPPOSITION", meaning: "an assumption or guess without proof", example: "His theory rests on a shaky supposition.", synonyms: ["assumption", "conjecture", "hypothesis"] },
+            { word: "SURMISE", meaning: "guessed based on limited evidence", example: "She surmised that he was upset from his silence.", synonyms: ["infer", "deduce", "conjecture"] },
+            { word: "SURPASS", meaning: "exceeded, went beyond", example: "Sales surpassed expectations this quarter.", synonyms: ["exceed", "outdo", "excel"] },
+            { word: "SUSCEPTIBLE", meaning: "easily affected or influenced", example: "Young children are more susceptible to illness.", synonyms: ["vulnerable", "prone", "exposed"] },
+            { word: "SYNCHRONIZATION", meaning: "coordinating to happen at the same time", example: "The dancers' synchronization was flawless.", synonyms: ["harmony", "coordination", "concurrence"] },
+            { word: "SYNOPSIS", meaning: "a brief summary", example: "She read the synopsis before watching the movie.", synonyms: ["summary", "outline", "abstract"] },
+            { word: "TEDIOUS", meaning: "long and boring", example: "Filling out the paperwork was tedious.", synonyms: ["monotonous", "tiresome", "dreary"] },
+            { word: "TENUOUS", meaning: "weak, flimsy, barely holding connection", example: "The link between the two events is tenuous at best.", synonyms: ["flimsy", "fragile", "precarious"] },
+            { word: "TRACED", meaning: "followed the origin or path of", example: "The disease was traced back to contaminated water.", synonyms: ["tracked", "followed", "pursued"] },
+            { word: "TRANQUIL", meaning: "calm, peaceful", example: "The lake was perfectly tranquil at dawn.", synonyms: ["peaceful", "serene", "placid"] },
+            { word: "TRANSCEND", meaning: "going beyond the limits of", example: "Her music has universal appeal transcending language.", synonyms: ["surpass", "exceed", "rise-above"] },
+            { word: "UBIQUITOUS", meaning: "present everywhere", example: "Smartphones have become ubiquitous in modern life.", synonyms: ["omnipresent", "pervasive", "everywhere"] },
+            { word: "UNDERESTIMATE", meaning: "judged to be smaller/weaker than true", example: "They underestimated how long the project would take.", synonyms: ["undervalue", "underrate", "miscalculate"] },
+            { word: "UNDERSCORE", meaning: "to emphasize", example: "The report underscores the need for reform.", synonyms: ["emphasize", "highlight", "stress"] },
+            { word: "UNOBTRUSIVE", meaning: "not noticeable or showy", example: "The security cameras were small and unobtrusive.", synonyms: ["inconspicuous", "discreet", "modest"] },
+            { word: "UNPRETENTIOUS", meaning: "modest, not showy", example: "The restaurant has an unpretentious atmosphere.", synonyms: ["modest", "unassuming", "humble"] },
+            { word: "UNREMARKABLE", meaning: "not particularly interesting or special", example: "The neighborhood looked ordinary and unremarkable.", synonyms: ["ordinary", "commonplace", "mediocre"] },
+            { word: "VALIDATE", meaning: "to confirm the truth or value of", example: "The experiment validated her original hypothesis.", synonyms: ["confirm", "verify", "authenticate"] },
+            { word: "VARIABLE", meaning: "likely to change; changeable factor", example: "Weather in the mountains is highly variable.", synonyms: ["changeable", "inconstant", "fluctuating"] },
+            { word: "VERISIMILITUDE", meaning: "the appearance of being true or real", example: "The film's attention to detail gave it great verisimilitude.", synonyms: ["authenticity", "realism", "credibility"] },
+            { word: "VERITABLE", meaning: "genuine, real (used for emphasis)", example: "The buffet was a veritable feast of options.", synonyms: ["genuine", "authentic", "absolute"] },
+            { word: "VIGILANCE", meaning: "watchfulness, alertness to danger", example: "Constant vigilance is needed to prevent fraud.", synonyms: ["watchfulness", "alertness", "caution"] },
+            { word: "VIVID", meaning: "bright, intense, clear in detail", example: "She has vivid memories of her childhood home.", synonyms: ["vibrant", "graphic", "striking"] },
+            { word: "WAIVE", meaning: "to voluntarily give up a right", example: "She waived her right to a lawyer.", synonyms: ["relinquish", "surrender", "forgo"] },
+            { word: "WITHDRAW", meaning: "to remove or take back", example: "She decided to withdraw her application.", synonyms: ["retract", "remove", "extract"] },
+            { word: "YIELD", meaning: "to give way; to produce a result", example: "The negotiations finally yielded a compromise.", synonyms: ["produce", "surrender", "generate"] },
+            { word: "ALLUDE", meaning: "to refer to indirectly", example: "The speech alluded to recent political events.", synonyms: ["hint", "intimate", "insinuate"] },
+            { word: "ANALOGOUS", meaning: "similar in some way", example: "Running a company is analogous to steering a ship.", synonyms: ["comparable", "similar", "parallel"] },
+            { word: "APPARENT", meaning: "clearly seen or understood", example: "It was apparent that she was upset.", synonyms: ["evident", "obvious", "manifest"] },
+            { word: "APPREHENSIVE", meaning: "anxious about the future", example: "She felt apprehensive about her first day at work.", synonyms: ["anxious", "fearful", "uneasy"] },
+            { word: "APTLY", meaning: "suitably, fittingly", example: "The movie was aptly named 'Chaos'.", synonyms: ["suitably", "appropriately", "fittingly"] },
+            { word: "CANDID", meaning: "honest and direct", example: "She gave a candid opinion about the plan.", synonyms: ["frank", "honest", "forthright"] },
+            { word: "CHRONIC", meaning: "persisting for a long time", example: "He suffers from a chronic back condition.", synonyms: ["persistent", "long-standing", "habual"] },
+            { word: "CIRCUMSPECT", meaning: "cautious, careful around topics", example: "He was circumspect when discussing the sensitive topic.", synonyms: ["cautious", "wary", "prudent"] },
+            { word: "CLANDESTINE", meaning: "secret, hidden", example: "They held a clandestine meeting at midnight.", synonyms: ["secret", "surreptitious", "covert"] },
+            { word: "COMPATIBLE", meaning: "able to exist or work together", example: "The new software is compatible with older computers.", synonyms: ["harmonious", "consistent", "matching"] },
+            { word: "COMPEL", meaning: "to force", example: "Fear compelled him to leave immediately.", synonyms: ["force", "coerce", "oblige"] },
+            { word: "COMPLACENT", meaning: "smugly self-satisfied, not trying hard", example: "Success made the team complacent and careless.", synonyms: ["self-satisfied", "smug", "contented"] },
+            { word: "COMPLICITY", meaning: "involvement in wrongdoing", example: "His complicity in the scheme was later revealed.", synonyms: ["collusion", "conspiracy", "involvement"] },
+            { word: "CONCUR", meaning: "to agree together", example: "The judges concurred on the winner.", synonyms: ["agree", "coincide", "assent"] },
+            { word: "CONDONE", meaning: "to approve of or overlook wrongdoing", example: "The school does not condone bullying.", synonyms: ["overlook", "pardon", "forgive"] },
+            { word: "CONSPICUOUS", meaning: "easily noticed", example: "Her bright red coat was conspicuous in the crowd.", synonyms: ["noticeable", "prominent", "striking"] },
+            { word: "CONTEMPLATE", meaning: "to think deeply about", example: "She contemplated her next career move.", synonyms: ["ponder", "meditate", "deliberate"] },
+            { word: "CREDULOUS", meaning: "too willing to believe, gullible", example: "A credulous investor fell for the scam.", synonyms: ["gullible", "naive", "trusting"] },
+            { word: "CYNICAL", meaning: "distrustful of others' motives", example: "He has a cynical view of politicians.", synonyms: ["pessimistic", "sardonic", "distrustful"] },
+            { word: "DEDUCE", meaning: "to conclude from reasoning/clues", example: "From the clues, she deduced who the culprit was.", synonyms: ["infer", "conclude", "gather"] },
+            { word: "DEFIANT", meaning: "boldly resisting authority", example: "The defiant teenager refused to follow the curfew.", synonyms: ["rebellious", "recalcitrant", "resistant"] },
+            { word: "DELIBERATE", meaning: "intentional; to think carefully", example: "It was a deliberate decision, not an accident.", synonyms: ["intentional", "purposeful", "calculated"] },
+            { word: "DESPONDENT", meaning: "deeply sad in low spirits, hopeless", example: "He felt despondent after losing the game.", synonyms: ["gloomy", "dejected", "downcast"] },
+            { word: "DILIGENT", meaning: "hardworking and careful", example: "She is a diligent student who never misses class.", synonyms: ["industrious", "assiduous", "conscientious"] },
+            { word: "DUBIOUS", meaning: "doubtful, of questionable value", example: "The claim seemed dubious at best.", synonyms: ["doubtful", "questionable", "uncertain"] },
+            { word: "ELICIT", meaning: "to draw out a response", example: "The joke elicited laughter from the crowd.", synonyms: ["evoke", "extract", "draw-out"] },
+            { word: "ENIGMATIC", meaning: "mysterious, puzzling", example: "The enigmatic smile left everyone guessing.", synonyms: ["mysterious", "cryptic", "puzzling"] },
+            { word: "EVASIVE", meaning: "avoiding giving a direct answer", example: "His evasive answers made the reporter suspicious.", synonyms: ["elusive", "slippery", "ambiguous"] },
+            { word: "EXEMPLARY", meaning: "outstanding, worth imitating", example: "Her exemplary work earned her a promotion.", synonyms: ["model", "praiseworthy", "commendable"] },
+            { word: "FORTHRIGHT", meaning: "direct and honest", example: "She gave a forthright answer to the tough question.", synonyms: ["candid", "direct", "frank"] },
+            { word: "FRIVOLOUS", meaning: "not serious, silly", example: "The judge dismissed the frivolous lawsuit.", synonyms: ["trivial", "silly", "foolish"] },
+            { word: "FUTILE", meaning: "completely useless, pointless effort", example: "It was futile to argue with him.", synonyms: ["useless", "pointless", "vain"] },
+            { word: "GROUNDBREAKING", meaning: "highly innovative, pioneering", example: "The groundbreaking research changed the field.", synonyms: ["pioneering", "revolutionary", "innovative"] },
+            { word: "IMPERATIVE", meaning: "extremely important, urgent", example: "It's imperative that we act quickly.", synonyms: ["vital", "crucial", "essential"] },
+            { word: "IMPLY", meaning: "to suggest indirectly", example: "Her tone implied she was upset.", synonyms: ["suggest", "intimate", "hint"] },
+            { word: "INCONGRUOUS", meaning: "out of place, not fitting", example: "The modern chair looked incongruous in the antique room.", synonyms: ["out-of-place", "inappropriate", "mismatched"] },
+            { word: "INDIFFERENT", meaning: "having no particular interest", example: "He seemed indifferent to the praise.", synonyms: ["unconcerned", "apathetic", "dispassionate"] },
+            { word: "INNOVATIVE", meaning: "introducing new ideas or methods", example: "The company is known for innovative products.", synonyms: ["inventive", "original", "pioneering"] },
+            { word: "INSTINCTIVE", meaning: "prompted by natural instinct", example: "Her reaction was instinctive and swift.", synonyms: ["intuitive", "spontaneous", "involuntary"] }
+        ];
+
+        // Clean and prepare dictionary (filter out invalid symbols)
+        const CLEANED_VOCAB = SAT_VOCAB_RAW
+            .map(item => ({ 
+                ...item, 
+                word: item.word.replace(/[^A-Z]/g, ''),
+                synonyms: item.synonyms || ["similar term", "parallel", "equivalent"]
+            }))
+            .filter(item => item.word.length >= 3 && item.word.length <= 10);
+
+        // Game Configuration State
+        let config = {
+            wordLength: 5,
+            maxGuesses: 6
+        };
+
+        // Active Game State
+        let gameState = {
+            secretWord: "",
+            currentEntry: null, // Vocab object
+            guesses: [],
+            currentGuess: "",
+            gameOver: false,
+            stats: { played: 0, wins: 0 }
+        };
+
+        // DOM Elements
+        const boardContainer = document.getElementById('board-container');
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const settingsModal = document.getElementById('settings-modal');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const wordLengthSelect = document.getElementById('word-length-select');
+        const wordStats = document.getElementById('word-stats');
+        const wordListPreview = document.getElementById('word-list-preview');
+        const hintBtn = document.getElementById('hint-btn');
+        const hintBanner = document.getElementById('hint-banner');
+        const hintText = document.getElementById('hint-text');
+
+        // Helper: Mask / Blur secret word variations inside example sentences
+        function maskSecretWord(sentence, targetWord) {
+            if (!sentence || !targetWord) return "";
+            // Match word root variations (e.g. word + s, ed, ing, ly, etc.)
+            const root = targetWord.slice(0, Math.max(3, targetWord.length - 2));
+            const regex = new RegExp(`\\b${root}[a-zA-Z]*\\b`, 'gi');
+            
+            return sentence.replace(regex, (match) => {
+                return `<span class="blurred-word" title="Click or hover to reveal">${match}</span>`;
+            });
+        }
+
+        // Initialize App on Load
+        window.onload = function() {
+            loadFromStorage();
+            setupEventListeners();
+            initGame();
+        };
+
+        // Load stats from localStorage
+        function loadFromStorage() {
+            const savedStats = localStorage.getItem('sat_wordle_stats');
+            if (savedStats) {
+                try {
+                    gameState.stats = JSON.parse(savedStats);
+                } catch(e) {}
+            }
+            const savedLen = localStorage.getItem('sat_wordle_len');
+            if (savedLen) {
+                config.wordLength = parseInt(savedLen);
+                wordLengthSelect.value = config.wordLength;
+            }
+            updateWordStats();
+        }
+
+        // Save stats to localStorage
+        function saveToStorage() {
+            localStorage.setItem('sat_wordle_stats', JSON.stringify(gameState.stats));
+            localStorage.setItem('sat_wordle_len', config.wordLength);
+        }
+
+        function updateWordStats() {
+            const matching = CLEANED_VOCAB.filter(i => {
+                if (config.wordLength >= 8) {
+                    return i.word.length >= 8;
+                }
+                return i.word.length === config.wordLength;
+            });
+            wordStats.textContent = `SAT Vocab words available (${config.wordLength >= 8 ? '8+' : config.wordLength}-letter): ${matching.length}`;
+            wordListPreview.textContent = matching.map(i => i.word).slice(0, 10).join(', ') + (matching.length > 10 ? '...' : '');
+            const wordLengthIndicator = document.getElementById('word-length-indicator');
+            if (wordLengthIndicator) {
+                wordLengthIndicator.textContent = `Length: ${config.wordLength >= 8 ? '8+' : config.wordLength}`;
+            }
+        }
+
+        // Initialize a new game round
+        function initGame() {
+            const matching = CLEANED_VOCAB.filter(i => {
+                if (config.wordLength >= 8) {
+                    return i.word.length >= 8;
+                }
+                return i.word.length === config.wordLength;
+            });
+            if (matching.length === 0) {
+                showToast(`No words found for length ${config.wordLength}. Defaulting to 5!`);
+                config.wordLength = 5;
+                wordLengthSelect.value = "5";
+                initGame();
+                return;
+            }
+
+            // Pick random secret word
+            const randomIndex = Math.floor(Math.random() * matching.length);
+            gameState.currentEntry = matching[randomIndex];
+            gameState.secretWord = gameState.currentEntry.word;
+            
+            config.wordLength = gameState.secretWord.length;
+
+            gameState.guesses = [];
+            gameState.currentGuess = "";
+            gameState.gameOver = false;
+
+            const wordLengthIndicator = document.getElementById('word-length-indicator');
+            if (wordLengthIndicator) {
+                wordLengthIndicator.textContent = `Length: ${config.wordLength} (${matching.length} SAT Words)`;
+            }
+            hintBanner.classList.add('hidden');
+            
+            buildBoard();
+            resetKeyboardUI();
+        }
+
+        // Build grid board dynamically
+        function buildBoard() {
+            boardContainer.innerHTML = '';
+            boardContainer.style.gridTemplateColumns = `repeat(${config.wordLength}, minmax(0, 1fr))`;
+            
+            for (let r = 0; r < config.maxGuesses; r++) {
+                for (let c = 0; c < config.wordLength; c++) {
+                    const tile = document.createElement('div');
+                    tile.id = `tile-${r}-${c}`;
+                    tile.className = `w-11 h-11 sm:w-13 sm:h-13 border-2 border-zinc-300 dark:border-zinc-700 font-black text-xl sm:text-2xl flex items-center justify-center rounded-lg uppercase transition-all duration-300 select-none bg-white dark:bg-[#121213]`;
+                    boardContainer.appendChild(tile);
+                }
+            }
+        }
+
+        function setupEventListeners() {
+            // Virtual Keyboard clicks
+            keyboardContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const key = btn.getAttribute('data-key');
+                if (key) handleKeyInput(key);
+            });
+
+            // Physical Keyboard input
+            window.addEventListener('keydown', (e) => {
+                if (settingsModal.classList.contains('hidden') === false || gameOverModal.classList.contains('hidden') === false) {
+                    if (e.key === 'Escape') {
+                        settingsModal.classList.add('hidden');
+                        gameOverModal.classList.add('hidden');
+                    }
+                    return;
+                }
+
+                if (e.key === 'Enter') {
+                    handleKeyInput('ENTER');
+                } else if (e.key === 'Backspace') {
+                    handleKeyInput('BACKSPACE');
+                } else {
+                    const upper = e.key.toUpperCase();
+                    if (/^[A-Z]$/.test(upper)) {
+                        handleKeyInput(upper);
+                    }
+                }
+            });
+
+            // Modals & Controls
+            document.getElementById('settings-btn').addEventListener('click', () => {
+                updateWordStats();
+                settingsModal.classList.remove('hidden');
+            });
+            document.getElementById('close-settings').addEventListener('click', () => settingsModal.classList.add('hidden'));
+            document.getElementById('save-settings-btn').addEventListener('click', () => {
+                config.wordLength = parseInt(wordLengthSelect.value) || 5;
+                settingsModal.classList.add('hidden');
+                saveToStorage();
+                initGame();
+                showToast(`Switched to ${config.wordLength}-letter SAT words!`);
+            });
+            document.getElementById('reset-bank-btn').addEventListener('click', () => {
+                config.wordLength = 5;
+                wordLengthSelect.value = "5";
+                updateWordStats();
+                showToast("Reset to default 5-letter SAT bank.");
+            });
+
+            document.getElementById('play-again-btn').addEventListener('click', () => {
+                gameOverModal.classList.add('hidden');
+                initGame();
+            });
+
+            // Theme Toggle
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            // Hint Button Click handler (with blurred word mask and synonyms)
+            hintBtn.addEventListener('click', () => {
+                if (gameState.gameOver) return;
+                
+                const maskedExample = maskSecretWord(gameState.currentEntry.example, gameState.secretWord);
+                const synonymList = (gameState.currentEntry.synonyms || []).slice(0, 3).join(', ');
+
+                hintText.innerHTML = `
+                    <div><strong>Meaning:</strong> ${gameState.currentEntry.meaning}</div>
+                    <div><strong>Example:</strong> "${maskedExample}"</div>
+                    <div><strong>Synonyms:</strong> <span class="font-semibold text-amber-700 dark:text-amber-300">${synonymList}</span></div>
+                `;
+                hintBanner.classList.remove('hidden');
+            });
+            
+            document.getElementById('close-hint').addEventListener('click', () => hintBanner.classList.add('hidden'));
+        }
+
+        function handleKeyInput(key) {
+            if (gameState.gameOver) return;
+
+            if (key === 'BACKSPACE') {
+                if (gameState.currentGuess.length > 0) {
+                    gameState.currentGuess = gameState.currentGuess.slice(0, -1);
+                    updateBoardUI();
+                }
+            } else if (key === 'ENTER') {
+                if (gameState.currentGuess.length !== config.wordLength) {
+                    showToast(`Not enough letters! Word must be ${config.wordLength} letters.`);
+                    shakeCurrentRow();
+                    return;
+                }
+                submitGuess();
+            } else {
+                if (gameState.currentGuess.length < config.wordLength) {
+                    gameState.currentGuess += key;
+                    updateBoardUI();
+                }
+            }
+        }
+
+        function updateBoardUI() {
+            const currentRow = gameState.guesses.length;
+            for (let c = 0; c < config.wordLength; c++) {
+                const tile = document.getElementById(`tile-${currentRow}-${c}`);
+                if (c < gameState.currentGuess.length) {
+                    tile.textContent = gameState.currentGuess[c];
+                    tile.classList.add('border-zinc-500', 'scale-105');
+                    setTimeout(() => tile.classList.remove('scale-105'), 100);
+                } else {
+                    tile.textContent = '';
+                    tile.classList.remove('border-zinc-500');
+                }
+            }
+        }
+
+        function submitGuess() {
+            const guess = gameState.currentGuess;
+            const currentRow = gameState.guesses.length;
+
+            const secretArr = gameState.secretWord.split('');
+            const guessArr = guess.split('');
+            const statuses = Array(config.wordLength).fill('absent');
+
+            // 1. Check Greens
+            for (let i = 0; i < config.wordLength; i++) {
+                if (guessArr[i] === secretArr[i]) {
+                    statuses[i] = 'correct';
+                    secretArr[i] = null;
+                    guessArr[i] = null;
+                }
+            }
+
+            // 2. Check Yellows
+            for (let i = 0; i < config.wordLength; i++) {
+                if (guessArr[i] !== null) {
+                    const secretIdx = secretArr.indexOf(guessArr[i]);
+                    if (secretIdx !== -1) {
+                        statuses[i] = 'present';
+                        secretArr[secretIdx] = null;
+                    }
+                }
+            }
+
+            animateTileColors(currentRow, guess, statuses);
+
+            gameState.guesses.push(guess);
+            gameState.currentGuess = "";
+
+            // Check Game Outcome
+            setTimeout(() => {
+                if (guess === gameState.secretWord) {
+                    endGame(true);
+                } else if (gameState.guesses.length >= config.maxGuesses) {
+                    endGame(false);
+                }
+            }, config.wordLength * 300 + 100);
+        }
+
+        function animateTileColors(row, guess, statuses) {
+            for (let c = 0; c < config.wordLength; c++) {
+                const tile = document.getElementById(`tile-${row}-${c}`);
+                const letter = guess[c];
+                const status = statuses[c];
+
+                setTimeout(() => {
+                    tile.classList.add('animate-flip');
+                    setTimeout(() => {
+                        if (status === 'correct') {
+                            tile.classList.add('bg-wordle-green', 'text-white', 'border-wordle-green');
+                            updateKeyboardButton(letter, 'correct');
+                        } else if (status === 'present') {
+                            tile.classList.add('bg-wordle-yellow', 'text-white', 'border-wordle-yellow');
+                            updateKeyboardButton(letter, 'present');
+                        } else {
+                            tile.classList.add('bg-wordle-absent', 'text-white', 'border-wordle-absent');
+                            updateKeyboardButton(letter, 'absent');
+                        }
+                    }, 300);
+                }, c * 250);
+            }
+        }
+
+        function updateKeyboardButton(letter, status) {
+            const btn = keyboardContainer.querySelector(`[data-key="${letter}"]`);
+            if (!btn) return;
+
+            const currentClass = btn.className;
+            if (currentClass.includes('bg-wordle-green')) return; // Priority rule
+            if (status === 'correct') {
+                btn.className = btn.className.replace(/bg-zinc-200|dark:bg-zinc-700|bg-wordle-yellow|bg-wordle-absent/g, '') + ' bg-wordle-green text-white';
+            } else if (status === 'present' && !currentClass.includes('bg-wordle-green')) {
+                btn.className = btn.className.replace(/bg-zinc-200|dark:bg-zinc-700|bg-wordle-absent/g, '') + ' bg-wordle-yellow text-white';
+            } else if (status === 'absent' && !currentClass.includes('bg-wordle-green') && !currentClass.includes('bg-wordle-yellow')) {
+                btn.className = btn.className.replace(/bg-zinc-200|dark:bg-zinc-700/g, '') + ' bg-wordle-absent text-white';
+            }
+        }
+
+        function resetKeyboardUI() {
+            const buttons = keyboardContainer.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.className = btn.className.replace(/bg-wordle-green|bg-wordle-yellow|bg-wordle-absent|text-white/g, '') + ' bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600';
+            });
+        }
+
+        function shakeCurrentRow() {
+            const currentRow = gameState.guesses.length;
+            for (let c = 0; c < config.wordLength; c++) {
+                const tile = document.getElementById(`tile-${currentRow}-${c}`);
+                tile.classList.add('animate-shake');
+                setTimeout(() => tile.classList.remove('animate-shake'), 400);
+            }
+        }
+
+        // End Game logic - Shows detailed review screen on both wins & losses
+        function endGame(won) {
+            gameState.gameOver = true;
+            gameState.stats.played++;
+            if (won) gameState.stats.wins++;
+            saveToStorage();
+
+            const titleEl = document.getElementById('game-over-title');
+            titleEl.textContent = won ? "Brilliant! 🎉" : "Word Missed! 📚";
+            titleEl.className = won ? "text-2xl font-black text-green-600 dark:text-green-400" : "text-2xl font-black text-red-500 dark:text-red-400";
+
+            document.getElementById('secret-word-display').textContent = gameState.secretWord;
+            document.getElementById('vocab-meaning').textContent = gameState.currentEntry.meaning;
+            
+            // Full unblurred example on review screen
+            document.getElementById('vocab-example').textContent = `"${gameState.currentEntry.example}"`;
+
+            // Display 3 Synonyms
+            const synonymsContainer = document.getElementById('vocab-synonyms');
+            synonymsContainer.innerHTML = '';
+            const synonyms = gameState.currentEntry.synonyms || ["similar", "equivalent", "matching"];
+            synonyms.slice(0, 3).forEach(syn => {
+                const badge = document.createElement('span');
+                badge.className = 'px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 rounded-md font-semibold text-[11px] capitalize border border-indigo-200 dark:border-indigo-800';
+                badge.textContent = syn;
+                synonymsContainer.appendChild(badge);
+            });
+            
+            // Stats
+            document.getElementById('stat-played').textContent = gameState.stats.played;
+            const winPct = Math.round((gameState.stats.wins / gameState.stats.played) * 100);
+            document.getElementById('stat-win').textContent = `${winPct}%`;
+
+            setTimeout(() => {
+                gameOverModal.classList.remove('hidden');
+            }, 600);
+        }
+
+        function showToast(message) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2.5 rounded-xl text-xs font-bold shadow-xl transition-all duration-300 transform opacity-0 translate-y-2';
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
